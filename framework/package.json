@@ -1,0 +1,21 @@
+{
+  "name": "breeze-framework",
+  "version": "0.1.0",
+  "description": "A modern full-stack TypeScript framework for Bun.",
+  "main": "framework/index.ts",
+  "scripts": {
+    "dev": "bun run framework/index.ts",
+    "build": "bun build framework/index.ts"
+  },
+  "dependencies": {
+    "zod": "^3.22.2",
+    "@trpc/server": "^10.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.18",
+    "typescript": "^5.0.0"
+  },
+  "engines": {
+    "bun": ">=1.0.0"
+  }
+}

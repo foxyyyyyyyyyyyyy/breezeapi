@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>How to Test Bun TCP Server/Client</title>
+  <style>
+    body { font-family: sans-serif; max-width: 700px; margin: 2em auto; background: #fafbfc; color: #222; }
+    pre { background: #f4f4f4; padding: 1em; border-radius: 6px; overflow-x: auto; }
+    code { font-family: monospace; }
+    h1, h2, h3 { color: #2d5b8c; }
+    .cmd { background: #e8eaf6; padding: 0.2em 0.5em; border-radius: 4px; }
+  </style>
+</head>
+<body>
+  <h1>How to Test Bun TCP Server and Client</h1>
+  <p>This guide shows how to test your TCP logic using Bun's native TCP API. You can use these steps to verify your server and client implementation.</p>
+
+  <h2>1. Create a TCP Echo Server</h2>
+  <p>Save this as <code>echo-server.js</code>:</p>
+  <pre><code>import { listen } from "bun";
+
+listen({
+  hostname: "127.0.0.1",
+  port: 9000,
+  socket: {
+    data(socket, data) {
+      socket.write(data); // Echo back
+    },
+    open(socket) {
+      console.log("Client connected:", socket.remoteAddress, socket.remotePort);
+    },
+    close(socket) {
+      console.log("Client disconnected");
+    },
+    error(socket, err) {
+      console.error("Socket error:", err);
+    }
+  }
+});
+console.log("TCP echo server listening on 127.0.0.1:9000");
+</code></pre>
+  <p>Run the server:</p>
+  <pre><code class="cmd">bun echo-server.js</code></pre>
+
+  <h2>2. Create a TCP Client for Testing</h2>
+  <p>Save this as <code>echo-client.js</code>:</p>
+  <pre><code>const socket = await Bun.connect({
+  hostname: "127.0.0.1",
+  port: 9000,
+  socket: {
+    open(socket) {
+      socket.write("Hello, TCP server!");
+    },
+    data(socket, data) {
+      console.log("Received from server:", new TextDecoder().decode(data));
+      socket.end();
+    },
+    close(socket) {
+      console.log("Connection closed");
+    }
+  }
+});
+</code></pre>
+  <p>Run the client:</p>
+  <pre><code class="cmd">bun echo-client.js</code></pre>
+
+  <h2>3. Test with Netcat (Optional)</h2>
+  <p>You can also use <code>nc</code> (netcat) from your terminal:</p>
+  <pre><code class="cmd">echo "Hello, TCP server!" | nc 127.0.0.1 9000</code></pre>
+
+  <h2>4. Tips</h2>
+  <ul>
+    <li>Check your server logs to see connection and data events.</li>
+    <li>Try sending different messages from the client or netcat.</li>
+    <li>Use <code>console.log</code> in your handler to debug.</li>
+  </ul>
+
+  <h2>References</h2>
+  <ul>
+    <li><a href="https://bun.sh/docs/api/tcp" target="_blank">Bun TCP API Documentation</a></li>
+  </ul>
+</body>
+</html> 

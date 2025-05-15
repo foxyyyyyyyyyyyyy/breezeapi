@@ -1,0 +1,15 @@
+{
+  "name": "breeze-basic-app",
+  "version": "1.0.0",
+  "description": "Example app for Breeze framework.",
+  "main": "src/index.ts",
+  "type": "module",
+  "scripts": {
+    "start": "bun src/index.ts"
+  },
+
+  "devDependencies": {},
+  "keywords": ["breeze", "example"],
+  "author": "",
+  "license": "MIT"
+} 

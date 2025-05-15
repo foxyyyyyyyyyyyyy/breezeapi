@@ -1,0 +1,11 @@
+node_modules
+/framework/node_modules
+/eSportsApp/
+examples/**/node_modules
+examples/**/dist
+examples/**/build
+examples/**/coverage
+examples/**/bun.lockb
+examples/**/bunfig.toml
+
+

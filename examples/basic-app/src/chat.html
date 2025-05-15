@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Chatroom WebSocket Test</title>
+</head>
+<body>
+  <h1>Chatroom WebSocket Test</h1>
+  <div>
+    <label>Chatroom ID: <input id="room" value="123"></label>
+    <button id="connect">Connect</button>
+  </div>
+  <div id="status"></div>
+  <div>
+    <input id="msg" placeholder="Type a message...">
+    <button id="send">Send</button>
+  </div>
+  <pre id="log"></pre>
+  <script>
+    let ws;
+    const log = document.getElementById('log');
+    const status = document.getElementById('status');
+    document.getElementById('connect').onclick = () => {
+      const room = document.getElementById('room').value;
+      ws = new WebSocket(`ws://localhost:3000/chat/${room}`);
+      ws.onopen = () => { status.textContent = 'Connected'; };
+      ws.onmessage = e => { log.textContent += e.data + '\n'; };
+      ws.onclose = () => { status.textContent = 'Disconnected'; };
+      ws.onerror = e => { status.textContent = 'Error'; };
+    };
+    document.getElementById('send').onclick = () => {
+      if (ws && ws.readyState === 1) {
+        ws.send(document.getElementById('msg').value);
+      }
+    };
+  </script>
+</body>
+</html> 
