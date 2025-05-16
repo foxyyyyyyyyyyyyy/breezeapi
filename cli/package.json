@@ -1,0 +1,20 @@
+{
+  "name": "breeze-cli",
+  "version": "0.1.0",
+  "description": "CLI tool for Breeze framework projects.",
+  "type": "module",
+  "main": "cli.ts",
+  "bin": {
+    "breeze": "cli.ts"
+  },
+  "dependencies": {
+    "prompts": "^2.4.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.18",
+    "@types/prompts": "^2.4.9"
+  }
+}

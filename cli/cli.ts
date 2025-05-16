@@ -1,4 +1,4 @@
-#!/usr/bin/env bun
+#!/usr/bin/env node
 import prompts from "prompts";
 import { mkdirSync, writeFileSync, existsSync, readFileSync } from "fs";
 import { join } from "path";

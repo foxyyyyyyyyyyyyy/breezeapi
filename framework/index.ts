@@ -1,7 +1,7 @@
 import { loadConfig } from './core/config';
 import { Router } from './core/router';
 import { resolve } from 'node:path';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync } from 'node:fs';
 export * as t from 'zod'; 
 export * from './core/trpc-adapter';
 export * from './core/context/api';
@@ -21,33 +21,36 @@ export { cors } from './core/cors';
  *   - config: loaded config
  *   - app: the app instance (for hooks, etc.)
  *   - registerRoute: (method, path, handler) => void (optional convenience)
+ *   - registerPluginRoute: (method, path, handler) => void (registers before user routes)
  *   - ...future extension points
+ *
+ * ctx type: Strongly typed context for plugin handlers (e.g., DiscordPluginContext)
  */
-export type PluginContext = {
+export type PluginContext<Ctx = any> = {
   router: Router;
   config: any;
   app: any;
   registerRoute?: (method: string, path: string, handler: Function) => void;
+  registerPluginRoute?: (method: string, path: string, handler: Function) => void;
+  ctxType?: Ctx;
 };
 
-function loadUserConfig() {
+async function loadUserConfig() {
   const root = process.cwd();
-  const configFiles = ['Breeze.json', 'breeze.config'];
-  for (const file of configFiles) {
-    const path = resolve(root, file);
-    if (existsSync(path)) {
-      try {
-        return JSON.parse(readFileSync(path, 'utf8'));
-      } catch (e) {
-        console.warn(`[Breeze] Failed to parse ${file}:`, e);
-      }
+  const configPath = resolve(root, '.breeze/config.ts');
+  if (existsSync(configPath)) {
+    try {
+      const config = await import(configPath);
+      return config.default || config;
+    } catch (e) {
+      console.warn(`[Breeze] Failed to import .breeze/config.ts:`, e);
     }
   }
   return {};
 }
 
-export function createApp(options = {}) {
-  const userConfig = loadUserConfig();
+export async function createApp(options = {}) {
+  const userConfig = await loadUserConfig();
   // Merge: options > userConfig > defaults
   const config = {
     ...userConfig,
@@ -60,12 +63,23 @@ export function createApp(options = {}) {
   const port = config.port || 3000;
   const tcpPort = config.tcpPort || 4000;
 
-  // Example usage:
-  // app.registerPlugin(docs({ http: true, tcp: true, ws: true, trpc: true }));
+  // Internal: Store plugin routes to register before user routes
+  const pluginRoutes: Array<{ method: string, path: string, handler: Function }> = [];
+
+  // Internal: Register plugin route (before user routes)
+  function _registerPluginRoute(method: string, path: string, handler: Function) {
+    pluginRoutes.push({ method, path, handler });
+  }
 
   // Plugin context object
   const app = {
     async start() {
+      // Register plugin routes before user routes
+      for (const { method, path, handler } of pluginRoutes) {
+        if (typeof router[method.toLowerCase()] === 'function') {
+          router[method.toLowerCase()](path, handler);
+        }
+      }
       // HTTP & WebSocket
       (globalThis as any).Bun.serve({
         port,
@@ -114,8 +128,11 @@ export function createApp(options = {}) {
             router[method.toLowerCase()](path, handler);
           }
         },
+        registerPluginRoute: _registerPluginRoute,
       });
     },
+    // Expose for plugins
+    _registerPluginRoute,
   };
   return app;
 } 

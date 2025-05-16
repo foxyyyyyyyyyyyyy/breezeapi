@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "@types/node": "^22.15.18",
+    "discord.js": "^14.19.3"
+  }
+}

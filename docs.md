@@ -292,7 +292,7 @@ Then, register it as global middleware in your app (e.g. in `src/middleware/cors
 import { cors } from '@breezeapi/core';
 
 export default cors({
-  origin: '*', // or specify your allowed origin
+  origin: '*', // your allowed origins
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true, // if you need cookies/auth
