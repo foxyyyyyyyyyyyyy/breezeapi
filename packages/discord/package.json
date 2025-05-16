@@ -1,6 +1,22 @@
+
 {
+  "name": "@breezeapi/discord",
+  "version": "0.1.0",
+  "description": "A discord plugin for breezeapi",
+  "main": "index.ts",
+  "scripts": {
+    "dev": "bun run index.ts",
+    "build": "bun build index.ts"
+  },
   "dependencies": {
     "@types/node": "^22.15.18",
     "discord.js": "^14.19.3"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.18",
+    "typescript": "^5.0.0"
+  },
+  "engines": {
+    "bun": ">=1.0.0"
   }
 }
