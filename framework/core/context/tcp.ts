@@ -9,6 +9,7 @@ export class TcpSocketContext {
   remoteAddress: string;
   remotePort: number;
   params: Record<string, string | undefined> = {};
+  state: Record<string, any> = {};
 
   constructor(raw: any, id: string, localAddress: string, localPort: number, remoteAddress: string, remotePort: number, params: Record<string, string | undefined> = {}) {
     this.raw = raw;

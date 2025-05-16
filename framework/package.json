@@ -1,6 +1,6 @@
 {
   "name": "@breezeapi/core",
-  "version": "1.5.0",
+  "version": "1.5.1",
   "description": "A modern TypeScript framework for Bun to build APIs.",
   "main": "index.ts",
   "scripts": {

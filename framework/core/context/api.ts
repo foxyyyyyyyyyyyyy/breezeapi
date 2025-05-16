@@ -11,6 +11,7 @@ export class HttpContext {
   cookies: Record<string, string> = {};
   private _setCookies: string[] = [];
   private _responseHeaders: Headers = new Headers();
+  state: Record<string, any> = {};
 
   constructor(req: Request, params: Record<string, string | undefined> = {}) {
     this.req = req;
@@ -45,7 +46,9 @@ export class HttpContext {
   }
 
   html(html: string): Response {
-    return new Response(html, { headers: { 'Content-Type': 'text/html', ...Object.fromEntries(this._responseHeaders) } });
+    const headersObj: Record<string, string> = { 'Content-Type': 'text/html' };
+    this._responseHeaders.forEach((v, k) => { headersObj[k] = v; });
+    return new Response(html, { headers: headersObj });
   }
 
   stream(stream: ReadableStream): Response {
@@ -87,9 +90,9 @@ export class HttpContext {
 
   buildResponse(body: BodyInit, init: ResponseInit = {}): Response {
     const headers = new Headers(init.headers || {});
-    for (const [k, v] of this._responseHeaders.entries()) {
+    this._responseHeaders.forEach((v, k) => {
       headers.set(k, v);
-    }
+    });
     return new Response(body, { ...init, headers });
   }
 

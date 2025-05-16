@@ -7,6 +7,7 @@ export class WebSocketContext {
   httpRequest: Request;
   params: Record<string, string | undefined> = {};
   url?: URL;
+  state: Record<string, any> = {};
 
   constructor(raw: any, httpRequest: Request, id: string, params: Record<string, string | undefined> = {}) {
     this.raw = raw;
@@ -52,9 +53,10 @@ export class WebSocketContext {
   }
   static _publish(topic: string, message: string | Uint8Array | ArrayBufferView) {
     if (WebSocketContext._topics.has(topic)) {
-      for (const wsCtx of WebSocketContext._topics.get(topic)!) {
+      const subscribers = WebSocketContext._topics.get(topic)!;
+      subscribers.forEach(wsCtx => {
         wsCtx.send(message);
-      }
+      });
     }
   }
 } 
