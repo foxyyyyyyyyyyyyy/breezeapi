@@ -1,0 +1,12 @@
+{
+    "compilerOptions": {
+      "types": ["bun-types"],
+      "baseUrl": ".",
+      "paths": {
+        "@/*": ["./*"],
+        "@core/*": ["./core/*"],
+        "@adapters/*": ["./adapters/*"],
+        "@context/*": ["./core/context/*"]
+      }
+    }
+  }

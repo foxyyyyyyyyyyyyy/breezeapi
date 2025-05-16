@@ -201,8 +201,8 @@ WebSocketContext._unsubscribe = function (topic, wsCtx) {
 };
 WebSocketContext._publish = function (topic, message) {
   if (WebSocketContext._topics.has(topic)) {
-    for (const wsCtx of WebSocketContext._topics.get(topic)!) {
+    Array.from(WebSocketContext._topics.get(topic)!).forEach(wsCtx => {
       wsCtx.send(message);
-    }
+    });
   }
-}; 
+};

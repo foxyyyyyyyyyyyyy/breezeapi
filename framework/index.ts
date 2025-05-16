@@ -10,6 +10,9 @@ export * from './core/context/tcp';
 export * from './core/middleware';
 export * from './core/docs';
 export { cors } from './core/cors';
+export { syncLayer } from './core/syncLayer';
+export { syncLayerSqlite } from './adapters/syncLayerSqlite';
+export { syncLayerRedis } from './adapters/syncLayerRedis';
 
 /**
  * Plugin API: Plugins receive a context object with deep integration points.
@@ -57,7 +60,9 @@ export async function createApp(options = {}) {
     ...options,
   };
   // Always resolve the API dir and TCP dir relative to the process cwd
+  //@ts-ignore
   const apiDir = resolve(process.cwd(), config.apiDir || 'src/routes');
+  //@ts-ignore
   const tcpDir = resolve(process.cwd(), config.tcpDir || apiDir);
   const router = new Router(apiDir, tcpDir, config);
   const port = config.port || 3000;
