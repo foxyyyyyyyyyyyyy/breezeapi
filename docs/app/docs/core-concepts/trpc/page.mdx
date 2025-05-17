@@ -1,0 +1,23 @@
+# tRPC Routes
+
+To create a tRPC route, add a `trpc.ts` file to your route folder.
+
+## Example
+
+```ts
+import { initTRPC } from '@trpc/server';
+const t = initTRPC.create();
+
+export const router = t.router({
+  hello: t.procedure.input(t.object({ name: t.string() })).query(({ input }) => {
+    return { greeting: `Hello, ${input.name}` };
+  }),
+});
+
+export const createContext = async (req: Request) => ({
+  // Add custom context if needed
+});
+```
+
+- The framework will automatically wire up `/chat/trpc` to this router using tRPC's official fetch adapter.
+- tRPC routes are fully type-safe and leverage TypeScript inference end-to-end. 

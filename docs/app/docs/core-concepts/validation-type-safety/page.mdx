@@ -1,0 +1,35 @@
+# Validation & Type Safety
+
+BreezeAPI uses Zod schemas and TypeScript for full type safety and runtime validation.
+
+## HTTP Example
+
+```ts
+import { t, HttpContext } from '@breezeapi/core';
+
+export const GET_config = {
+  params: t.object({ id: t.string() }),
+  response: t.object({ id: t.string() }),
+};
+
+export async function GET(ctx: HttpContext) {
+  // ctx.params.id is always a string
+  return Response.json({ id: ctx.params.id });
+}
+```
+
+## tRPC Example
+
+```ts
+import { initTRPC } from '@trpc/server';
+const t = initTRPC.create();
+
+export const router = t.router({
+  hello: t.procedure.input(t.object({ name: t.string() })).query(({ input }) => {
+    return { greeting: `Hello, ${input.name}` };
+  }),
+});
+```
+
+- All params, queries, and responses are validated at runtime.
+- tRPC routers are fully type-safe end-to-end. 

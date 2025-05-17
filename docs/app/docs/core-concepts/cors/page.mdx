@@ -1,0 +1,41 @@
+# CORS Middleware
+
+BreezeAPI provides a built-in CORS middleware to handle Cross-Origin Resource Sharing for your API.
+
+## Usage
+
+CORS is configured in your `.breeze/config.ts` file, not as a middleware file.
+
+### Example `.breeze/config.ts`
+
+```ts
+export default {
+  name: "My Cool API",
+  port: 3000,
+  tcpPort: 5000,
+  debug: true,
+  cors: {
+    origin: [
+      Bun.env.CORS_ORIGIN1!,
+      Bun.env.CORS_ORIGIN2!,
+      Bun.env.CORS_ORIGIN3!
+    ],
+    methods: ['GET', 'POST', 'OPTIONS', 'PUT', 'DELETE', 'PATCH'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'api-key'],
+    exposedHeaders: ['X-Custom-Header'],
+    credentials: true,
+    maxAge: 3600,
+  },
+}
+```
+
+- The CORS middleware will automatically handle `OPTIONS` preflight requests and set the appropriate headers.
+- You can use environment variables for origins or other values.
+
+## Options
+- `origin`: Allowed origin(s) (string or array, default: `*`)
+- `methods`: Allowed HTTP methods (default: `['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS']`)
+- `allowedHeaders`: Allowed request headers (default: `['Content-Type', 'Authorization']`)
+- `exposedHeaders`: Headers exposed to the browser (default: `[]`)
+- `credentials`: Whether to allow credentials (default: `false`)
+- `maxAge`: How long the results of a preflight request can be cached (in seconds) 

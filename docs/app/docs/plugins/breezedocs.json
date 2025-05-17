@@ -1,0 +1,7 @@
+{
+  "title": "Plugins",
+  "pages": [
+    { "title": "Overview", "slug": "", "file": "page.mdx" },
+    { "title": "Discord Plugin", "slug": "discord", "file": "discord/page.mdx" }
+  ]
+} 

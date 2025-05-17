@@ -1,0 +1,37 @@
+# TCP Routes
+
+To create a TCP route, add a `handler.ts` file to your route folder.
+
+## Handler Signatures
+
+```ts
+export function open(ctx) {
+  // Called when a new TCP connection is opened
+}
+
+export function data(ctx, data) {
+  // Called when data is received
+}
+
+export function close(ctx) {
+  // Called when the connection is closed
+}
+
+export function error(ctx, error) {
+  // Called on error
+}
+```
+
+- `ctx` is a TcpSocketContext (see Handlers & Context).
+- Supports dynamic segments (e.g., `/echo/[id]/handler.ts`).
+
+## Example
+
+```ts
+// src/routes/echo/handler.ts
+export function data(ctx, data) {
+  ctx.socket.write(data); // echo
+}
+```
+
+See Handlers & Context for more details. 

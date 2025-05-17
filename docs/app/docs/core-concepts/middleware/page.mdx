@@ -1,0 +1,46 @@
+# Middleware
+
+BreezeAPI supports a powerful, file-based middleware system inspired by Next.js.
+
+- **Middleware signature:** `(ctx, next) => Promise<Response>`
+
+## Global Middleware
+Place files in `src/middleware/`. All are run for every request, in order.
+
+```ts
+// src/middleware/logger.ts
+export default async (ctx, next) => {
+  console.log('Request:', ctx.req.url);
+  return next();
+};
+```
+
+## Per-route Middleware
+Add `middleware.ts` to any route folder. Runs for all routes in that folder and subfolders, after global middleware.
+
+```ts
+// src/routes/users/middleware.ts
+export default async (ctx, next) => {
+  if (!ctx.user) return new Response('Unauthorized', { status: 401 });
+  return next();
+};
+```
+
+## Router Group Middleware
+Use parentheses for route groups. Add `middleware.ts` to the group folder.
+
+```ts
+// src/routes/(auth)/middleware.ts
+export default async (ctx, next) => {
+  // Auth logic for all routes in (auth) group
+  return next();
+};
+```
+
+## Execution Order
+1. Global middleware (`src/middleware/`)
+2. Router group middleware (`src/routes/(group)/middleware.ts`)
+3. Per-folder middleware (`src/routes/users/middleware.ts`)
+4. Per-leaf middleware (`src/routes/users/[id]/middleware.ts`)
+
+You can nest groups and combine with dynamic segments. 

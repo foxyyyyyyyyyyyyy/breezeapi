@@ -1,0 +1,42 @@
+# WebSocket Routes
+
+To create a WebSocket route, add a `socket.ts` file to your route folder.
+
+## Handler Signatures
+
+```ts
+export function open(ctx) {
+  // Called when a new WebSocket connection is opened
+}
+
+export function message(ctx, data) {
+  // Called when a message is received
+}
+
+export function close(ctx, code, reason) {
+  // Called when the connection is closed
+}
+
+export function error(ctx, error) {
+  // Called on error
+}
+```
+
+- `ctx` is a WebSocketContext (see Handlers & Context).
+- Supports dynamic segments (e.g., `/chat/[id]/socket.ts`).
+- Use `ctx.send()`, `ctx.publish()`, etc. for messaging and pub/sub.
+
+## Example
+
+```ts
+// src/routes/chat/socket.ts
+export function open(ctx) {
+  ctx.send('Welcome!');
+}
+
+export function message(ctx, msg) {
+  ctx.publish('chat', msg);
+}
+```
+
+See Handlers & Context for more details. 

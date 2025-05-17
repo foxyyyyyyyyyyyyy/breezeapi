@@ -1,0 +1,44 @@
+# Project Structure
+
+Here's what a real BreezeAPI project structure looks like (from the `basic-app` example):
+
+<FileStructure>
+my-api/
+├── .breeze/
+│   └── config.ts                # Project config (name, port, debug, etc.)
+├── node_modules/
+├── package.json                 # Project dependencies and scripts
+├── src/
+│   ├── index.ts                 # App entry point
+│   ├── middleware/
+│   │   └── test.ts              # Example global middleware
+│   ├── routes/
+│   │   ├── users/
+│   │   │   ├── [id]/
+│   │   │   │   └── route.ts     # Dynamic user HTTP route: /users/:id
+│   │   │   ├── handler.ts       # TCP handler for /users
+│   │   │   └── middleware.ts    # Per-route middleware for /users
+│   │   └── chat/
+│   │       ├── [id]/
+│   │       │   └── socket.ts    # Dynamic chat WebSocket: /chat/:id
+│   │       └── socket.ts        # WebSocket handler for /chat
+│   │       └── trpc.ts          # tRPC router for /chat
+
+</FileStructure>
+
+## Folder/Files Explained
+
+- **.breeze/**: Project-level config (e.g., `config.ts`).
+- **src/index.ts**: Main entry point for your app.
+- **src/routes/**: All protocol routes (HTTP, WebSocket, TCP, tRPC) are defined here. Use different file names for each protocol:
+  - `route.ts` for HTTP
+  - `socket.ts` for WebSocket
+  - `handler.ts` for TCP
+  - `trpc.ts` for tRPC
+  Folders and files map to routes. Supports dynamic segments (`[id]`) and router groups (`(public)/users`).
+- **src/routes/*/middleware.ts**: Per-route or per-folder middleware.
+- **src/middleware/**: Global middleware for all requests.
+- **package.json**: Project metadata, dependencies, and scripts.
+
+You can add more folders (e.g., for organization), but all protocol routing is handled in `src/routes/` using the appropriate file names. See Core Concepts for more details.
+
