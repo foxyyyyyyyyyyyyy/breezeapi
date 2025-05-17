@@ -1,12 +1,13 @@
 // Built-in CORS middleware
 export type CORSOptions = {
-  origin?: string;
+  origin?: string | string[];
   methods?: string[];
   allowedHeaders?: string[];
   credentials?: boolean;
+  exposedHeaders?: string[];
+  maxAge?: number;
 };
 
-// In the future, global config (like API version, name, etc.) should go in a breeze.json or similar, not here.
 
 export function cors(options: CORSOptions = {}): any {
   const {
@@ -14,16 +15,22 @@ export function cors(options: CORSOptions = {}): any {
     methods = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders = ['Content-Type', 'Authorization'],
     credentials = false,
+    exposedHeaders = [],
+    maxAge,
   } = options;
 
   return async function (ctx: any, next: () => Promise<Response>): Promise<Response> {
-    // Set CORS headers
-    ctx.set('Access-Control-Allow-Origin', origin);
+    let allowedOrigin = origin;
+    if (Array.isArray(origin)) {
+      const reqOrigin = ctx.headers.get('origin');
+      allowedOrigin = origin.includes(reqOrigin) ? reqOrigin : '';
+    }
+    ctx.set('Access-Control-Allow-Origin', allowedOrigin);
     ctx.set('Access-Control-Allow-Methods', methods.join(','));
     ctx.set('Access-Control-Allow-Headers', allowedHeaders.join(','));
-    if (credentials) {
-      ctx.set('Access-Control-Allow-Credentials', 'true');
-    }
+    if (credentials) ctx.set('Access-Control-Allow-Credentials', 'true');
+    if (exposedHeaders.length) ctx.set('Access-Control-Expose-Headers', exposedHeaders.join(','));
+    if (maxAge) ctx.set('Access-Control-Max-Age', String(maxAge));
 
     // Handle preflight OPTIONS request
     if (ctx.method === 'OPTIONS') {

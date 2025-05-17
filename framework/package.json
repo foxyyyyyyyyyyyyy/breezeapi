@@ -1,11 +1,11 @@
 {
   "name": "@breezeapi/core",
-  "version": "1.5.1",
+  "version": "1.5.4",
   "description": "A modern TypeScript framework for Bun to build APIs.",
   "main": "index.ts",
   "scripts": {
     "dev": "bun run index.ts",
-    "build": "bun build index.ts"
+    "build": "tsc --project tsconfig.build.json && tsc-alias -p tsconfig.build.json"
   },
   "dependencies": {
     "prompts": "^2.4.2",
@@ -15,7 +15,8 @@
   "devDependencies": {
     "@types/node": "^22.15.18",
     "bun-types": "^1.2.13",
-    "typescript": "^5.0.0"
+    "typescript": "^5.0.0",
+    "tsc-alias": "^1.8.11"
   },
   "engines": {
     "bun": ">=1.2.13"

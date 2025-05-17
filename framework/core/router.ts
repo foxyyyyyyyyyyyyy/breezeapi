@@ -3,6 +3,7 @@ import { HttpContext } from './context/api';
 import { WebSocketContext } from './context/ws';
 import { TcpSocketContext } from './context/tcp';
 import { compose, getMiddlewareForRoute } from './middleware';
+import { cors } from './cors';
 
 function extractParams(routePath: string, actualPath: string): Record<string, string> {
   const params: Record<string, string> = {};
@@ -80,6 +81,38 @@ export class Router {
   async handleHttp(req: Request): Promise<Response> {
     await this.loadRoutes();
     const url = new URL(req.url);
+
+    // --- CORS HANDLING (before anything else) ---
+    let corsConfigFound = false;
+    if (this.config?.cors) {
+      corsConfigFound = true;
+      // Use your CORS logic to set headers and handle preflight
+      const corsHandler = cors(this.config.cors);
+      // Minimal ctx for CORS (just headers/method)
+      const ctx: any = {
+        headers: req.headers,
+        method: req.method,
+        set: (k: string, v: string) => {
+          if (!ctx._responseHeaders) ctx._responseHeaders = new Headers();
+          ctx._responseHeaders.set(k, v);
+        },
+        _responseHeaders: new Headers(),
+      };
+      // Run the CORS handler with a dummy next
+      const maybeResponse = await corsHandler(ctx, async () => undefined);
+      if (maybeResponse) {
+        // If CORS handler returns a response (e.g. for OPTIONS), return it immediately
+        return maybeResponse;
+      }
+      // Otherwise, pass the headers to the real context below
+    } else {
+      // Only log once per process
+      if (!(globalThis as any)._breezeCorsWarned) {
+        console.warn('[Breeze] No CORS config found in .breeze/config.ts. CORS headers will not be set.');
+        (globalThis as any)._breezeCorsWarned = true;
+      }
+    }
+
     // Check custom GET routes first
     if (req.method === 'GET') {
       const custom = this.customGetRoutes.find(r => r.path === url.pathname);
@@ -113,6 +146,23 @@ export class Router {
     // ---
     const ctx = new HttpContext(req, params);
     ctx.querys = querys;
+    // If CORS headers were set above, copy them to ctx._responseHeaders
+    if (corsConfigFound) {
+      const corsHandler = cors(this.config.cors);
+      const tempCtx: any = {
+        headers: req.headers,
+        method: req.method,
+        set: (k: string, v: string) => {
+          if (!tempCtx._responseHeaders) tempCtx._responseHeaders = new Headers();
+          tempCtx._responseHeaders.set(k, v);
+        },
+        _responseHeaders: new Headers(),
+      };
+      await corsHandler(tempCtx, async () => undefined);
+      for (const [k, v] of tempCtx._responseHeaders) {
+        ctx.set(k, v);
+      }
+    }
     // Use new middleware discovery logic
     const path = require('path');
     const srcRoot = path.resolve(this.apiDir, '..');
@@ -130,6 +180,20 @@ export class Router {
       } catch (e: any) {
         return new Response('Invalid response: ' + e.message, { status: 500 });
       }
+    }
+    
+    let hasCustomHeaders = false;
+    ctx.responseHeaders.forEach(() => { hasCustomHeaders = true; });
+    if (hasCustomHeaders) {
+      const newHeaders = new Headers(response.headers);
+      ctx.responseHeaders.forEach((v, k) => {
+        newHeaders.set(k, v);
+      });
+      response = new Response(response.body, {
+        status: response.status,
+        statusText: response.statusText,
+        headers: newHeaders,
+      });
     }
     return response;
   }
