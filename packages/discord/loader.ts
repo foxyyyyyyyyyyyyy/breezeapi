@@ -48,12 +48,22 @@ export async function loadCommands(baseDir = 'src/discord/commands') {
   return commands;
 }
 
-// Events: Map filename to event name
+// Events: Map filename or parent folder to event name
 export async function loadEvents(baseDir = 'src/discord/events') {
   const files = scanDir(baseDir, false);
   const events: any[] = [];
   for (const file of files) {
-    const name = file.split(sep).pop()!.replace(/\.(ts|js)$/, '');
+    // Get relative path from baseDir
+    const rel = relative(baseDir, file).replace(/\\/g, '/');
+    const parts = rel.split('/');
+    let name;
+    if (parts.length > 1) {
+      // File is in a subfolder: use the first folder as the event name
+      name = parts[0];
+    } else {
+      // File is directly under events: use filename as event name
+      name = parts[0].replace(/\.(ts|js)$/, '');
+    }
     const mod = await import(join(process.cwd(), file));
     events.push({
       name,
