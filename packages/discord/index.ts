@@ -2,6 +2,7 @@ import { PluginContext } from '../../framework';
 import { loadDiscordConfig, loadCommands, loadEvents, loadContextMenus } from './loader.js';
 import { getClient, sendToChannel } from './client.js';
 import { REST, Routes } from 'discord.js';
+import { Permissions } from './types.js';
 export { Intents, GatewayIntentBits } from './types.js';
 export type { DiscordContext, CommandOptions } from './types.js';
 export { sendToChannel } from './client.js';
@@ -18,7 +19,7 @@ function commandToAPI(cmd: any) {
     name: cmd.name,
     description: cmd.handler.commandOptions?.description || 'No description',
     type: 1, // 1 = ChatInput (slash command)
-    // options: ... (add if you support options)
+    options: cmd.handler.commandOptions?.options || [],
   };
 }
 
@@ -113,15 +114,39 @@ export async function discordPlugin(ctx: PluginContext) {
     if (!interaction.isChatInputCommand()) return;
     const handler = commandMap.get(interaction.commandName);
     if (!handler) return;
+    // Build options object from interaction.options
+    const optionsObj: Record<string, any> = {};
+    if (interaction.options && Array.isArray(handler.commandOptions?.options)) {
+      for (const opt of handler.commandOptions.options) {
+        const val = interaction.options.get(opt.name)?.value;
+        if (val !== undefined) optionsObj[opt.name] = val;
+      }
+    }
     // Build context
     const ctx = {
       client,
       interaction,
+      options: optionsObj,
       reply: (data: any) => interaction.reply(data),
       defer: () => interaction.deferReply(),
       followUp: (data: any) => interaction.followUp(data),
     };
     try {
+      // Permission check (if defined)
+      const perms = handler.commandOptions?.permissions;
+      if (perms) {
+        const member = interaction.member as any;
+        const required = Array.isArray(perms) ? perms : [perms];
+        // Only check if member.permissions is a PermissionsBitField
+        const hasPerms = member?.permissions && typeof member.permissions.has === 'function';
+        const missing = hasPerms
+          ? required.filter((perm: string) => !member.permissions.has(Permissions[perm]))
+          : required;
+        if (missing.length > 0) {
+          await interaction.reply({ content: `You lack the required permissions: ${missing.join(', ')}`, ephemeral: true });
+          return;
+        }
+      }
       // Run checks, before, after hooks if needed
       if (handler.commandOptions?.checks) {
         for (const check of handler.commandOptions.checks) {
