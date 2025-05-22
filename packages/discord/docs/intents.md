@@ -35,7 +35,6 @@ Enable these in the Discord Developer Portal under your bot's settings.
 
 ## Troubleshooting
 - If your event handler is not firing, check your `intents` config and make sure you enabled privileged intents in the Developer Portal.
-- See [RoboJS event docs](https://robojs.dev/discord-bots/events) for more info.
 
 ## See Also
 - [Event Handlers](events.md)
