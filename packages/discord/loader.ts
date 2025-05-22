@@ -1,5 +1,6 @@
 import { join, relative, sep } from 'path';
 import { readdirSync, statSync, existsSync } from 'fs';
+import type { EventMetadata } from './types.js';
 
 // Helper: Recursively scan a directory, ignoring folders in parentheses
 function scanDir(dir: string, ignoreParens = true): string[] {
@@ -49,14 +50,16 @@ export async function loadCommands(baseDir = 'src/discord/commands') {
 }
 
 // Events: Map filename or parent folder to event name
-export async function loadEvents(baseDir = 'src/discord/events') {
+export async function loadEvents(baseDir = 'src/discord/events'): Promise<EventMetadata[]> {
   const files = scanDir(baseDir, false);
-  const events: any[] = [];
+  const events: EventMetadata[] = [];
+  
   for (const file of files) {
     // Get relative path from baseDir
     const rel = relative(baseDir, file).replace(/\\/g, '/');
     const parts = rel.split('/');
-    let name;
+    let name: string;
+    
     if (parts.length > 1) {
       // File is in a subfolder: use the first folder as the event name
       name = parts[0];
@@ -64,13 +67,27 @@ export async function loadEvents(baseDir = 'src/discord/events') {
       // File is directly under events: use filename as event name
       name = parts[0].replace(/\.(ts|js)$/, '');
     }
-    const mod = await import(join(process.cwd(), file));
-    events.push({
-      name,
-      file,
-      handler: mod.default || mod,
-    });
+    
+    try {
+      const mod = await import(join(process.cwd(), file));
+      const handler = mod.default || mod;
+      
+      // Validate event name
+      if (!name.match(/^[a-zA-Z]+$/)) {
+        console.warn(`[Breeze Discord] Invalid event name in ${file}: ${name}. Event names should only contain letters.`);
+        continue;
+      }
+      
+      events.push({
+        name: name as any, // Type assertion since we validated the name format
+        file,
+        handler,
+      });
+    } catch (error) {
+      console.error(`[Breeze Discord] Failed to load event handler from ${file}:`, error);
+    }
   }
+  
   return events;
 }
 
