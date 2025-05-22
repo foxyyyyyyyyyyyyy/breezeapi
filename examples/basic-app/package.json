@@ -7,9 +7,13 @@
   "scripts": {
     "start": "bun src/index.ts"
   },
-
   "devDependencies": {},
   "keywords": ["breeze", "example"],
   "author": "",
-  "license": "MIT"
-} 
+  "license": "MIT",
+  "dependencies": {
+    "@prisma/client": "^6.8.2",
+    "better-auth": "^1.2.8",
+    "prisma": "^6.8.2"
+  }
+}

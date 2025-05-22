@@ -1,4 +1,4 @@
-import { PluginContext } from '../../framework';
+import type{ PluginContext } from '../../framework';
 import { loadDiscordConfig, loadCommands, loadEvents, loadContextMenus } from './loader.js';
 import { getClient, sendToChannel } from './client.js';
 import { REST, Routes } from 'discord.js';
@@ -14,12 +14,41 @@ export function Command(options: import('./types.js').CommandOptions) {
   };
 }
 
+// Discord option type mapping (string to number)
+const OptionTypeMap: Record<string, number> = {
+  subcommand: 1,
+  subcommand_group: 2,
+  string: 3,
+  integer: 4,
+  boolean: 5,
+  user: 6,
+  channel: 7,
+  role: 8,
+  mentionable: 9,
+  number: 10,
+  attachment: 11,
+};
+
+function resolveOptionType(type: string | number): number {
+  if (typeof type === 'number') return type;
+  return OptionTypeMap[type] ?? 3; // default to string if unknown
+}
+
+function mapOptions(options?: any[]): any[] {
+  if (!options) return [];
+  return options.map(opt => ({
+    ...opt,
+    type: resolveOptionType(opt.type),
+    options: opt.options ? mapOptions(opt.options) : undefined,
+  }));
+}
+
 function commandToAPI(cmd: any) {
   return {
     name: cmd.name,
     description: cmd.handler.commandOptions?.description || 'No description',
     type: 1, // 1 = ChatInput (slash command)
-    options: cmd.handler.commandOptions?.options || [],
+    options: mapOptions(cmd.handler.commandOptions?.options),
   };
 }
 
@@ -147,7 +176,7 @@ export async function discordPlugin(ctx: PluginContext) {
         // Only check if member.permissions is a PermissionsBitField
         const hasPerms = member?.permissions && typeof member.permissions.has === 'function';
         const missing = hasPerms
-          ? required.filter((perm: string) => !member.permissions.has(Permissions[perm]))
+          ? required.filter((perm: string) => !member.permissions.has(Permissions[perm as keyof typeof Permissions]))
           : required;
         if (missing.length > 0) {
           await interaction.reply({ content: `You lack the required permissions: ${missing.join(', ')}`, ephemeral: true });
