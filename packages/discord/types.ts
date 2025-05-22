@@ -1,4 +1,4 @@
-import { Client as DiscordClient, GatewayIntentBits, Interaction, CommandInteraction, Message, IntentsBitField, PermissionsBitField } from 'discord.js';
+import { Client as DiscordClient, GatewayIntentBits, Interaction, CommandInteraction, Message, IntentsBitField, PermissionsBitField, Events, ClientEvents } from 'discord.js';
 
 /**
  * Intent groups for easy configuration. Use these in your .breeze/plugins/discord.config.ts.
@@ -252,5 +252,21 @@ export type CommandOptions = {
 };
 
 export type CommandHandler = (ctx: DiscordContext) => any;
-export type EventHandler = (client: DiscordClient, ...args: any[]) => any;
+
+/**
+ * Type for Discord.js event handlers with proper parameter typing
+ */
+export type EventHandler<K extends keyof ClientEvents = keyof ClientEvents> = (
+  ...args: ClientEvents[K]
+) => Promise<void> | void;
+
+/**
+ * Event handler metadata
+ */
+export interface EventMetadata {
+  name: keyof ClientEvents;
+  file: string;
+  handler: EventHandler;
+}
+
 export type ContextMenuHandler = (ctx: DiscordContext) => any; 

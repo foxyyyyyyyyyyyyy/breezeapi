@@ -85,9 +85,16 @@ export async function discordPlugin(ctx: PluginContext) {
     for (const evt of events) {
       console.log(`  ${evt.name} (${evt.file})`);
     }
-    // Attach event handlers to client
+    
+    // Attach event handlers to client with proper error handling
     for (const evt of events) {
-      client.on(evt.name, (...args: any[]) => evt.handler(client, ...args));
+      client.on(evt.name, async (...args) => {
+        try {
+          await evt.handler(...args);
+        } catch (error) {
+          console.error(`[Breeze Discord] Error in event handler ${evt.name}:`, error);
+        }
+      });
     }
   } else {
     console.log('[Breeze Discord] No events registered.');
