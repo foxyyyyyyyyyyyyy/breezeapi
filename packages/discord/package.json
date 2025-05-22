@@ -1,6 +1,6 @@
 {
   "name": "@breezeapi/discord",
-  "version": "0.1.8",
+  "version": "0.2.2",
   "description": "A discord plugin for breezeapi",
   "main": "index.ts",
   "scripts": {
@@ -8,6 +8,7 @@
     "build": "bun build index.ts"
   },
   "dependencies": {
+    "@breezeapi/core": "^1.5.4",
     "@types/node": "^22.15.18",
     "discord.js": "^14.19.3"
   },

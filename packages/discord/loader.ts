@@ -1,6 +1,7 @@
 import { join, relative, sep } from 'path';
 import { readdirSync, statSync, existsSync } from 'fs';
 import type { EventMetadata } from './types.js';
+import { __commandRegistry } from './index.js';
 
 // Helper: Recursively scan a directory, ignoring folders in parentheses
 function scanDir(dir: string, ignoreParens = true): string[] {
@@ -41,9 +42,15 @@ export async function loadCommands(baseDir = 'src/discord/commands') {
     const meta = getCommandMeta(baseDir, file);
     // Dynamic import
     const mod = await import(join(process.cwd(), file));
+    let handler = mod.default || mod;
+    // Prefer named export 'command' or 'Command' for config
+    const config = mod.command || mod.Command || handler.commandOptions;
+    if (config && handler) {
+      handler.commandOptions = config;
+    }
     commands.push({
       ...meta,
-      handler: mod.default || mod,
+      handler,
     });
   }
   return commands;
@@ -62,10 +69,10 @@ export async function loadEvents(baseDir = 'src/discord/events'): Promise<EventM
     
     if (parts.length > 1) {
       // File is in a subfolder: use the first folder as the event name
-      name = parts[0];
+      name = parts[0]!; // Add non-null assertion since we know parts has elements
     } else {
       // File is directly under events: use filename as event name
-      name = parts[0].replace(/\.(ts|js)$/, '');
+      name = parts[0]!.replace(/\.(ts|js)$/, ''); // Add non-null assertion
     }
     
     try {

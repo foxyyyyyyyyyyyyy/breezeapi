@@ -1,17 +1,27 @@
-import type{ PluginContext } from '../../framework';
+import type{ PluginContext } from '@breezeapi/core';
 import { loadDiscordConfig, loadCommands, loadEvents, loadContextMenus } from './loader.js';
-import { getClient, sendToChannel } from './client.js';
+import { getClient, sendToChannel, Client } from './client.js';
 import { REST, Routes } from 'discord.js';
 import { Permissions } from './types.js';
 export { Intents, GatewayIntentBits } from './types.js';
 export type { DiscordContext, CommandOptions } from './types.js';
 export { sendToChannel } from './client.js';
 
+// Global registry for command configs by file
+export const __commandRegistry: Record<string, any> = {};
+
 // Command registration helper
 export function Command(options: import('./types.js').CommandOptions) {
-  return function (target: any) {
-    target.commandOptions = options;
-  };
+  // Try to get the caller file from the stack
+  const err = new Error();
+  const stack = err.stack?.split('\n');
+  // Find the first stack line that is not this file
+  const callerLine = stack?.find(line => !line.includes('Command') && line.includes('.ts'));
+  const match = callerLine?.match(/\((.*):(\d+):(\d+)\)/) || callerLine?.match(/at (.*):(\d+):(\d+)/);
+  const file = match?.[1];
+  if (file) {
+    __commandRegistry[file] = options;
+  }
 }
 
 // Discord option type mapping (string to number)
@@ -210,4 +220,27 @@ export async function discordPlugin(ctx: PluginContext) {
   (ctx as any).discord = client;
 }
 
-export { Client } from './client.js'; 
+/**
+ * Adds a role to a user in a specified guild.
+ * @param guildId The ID of the guild
+ * @param userId The ID of the user
+ * @param roleId The ID of the role to add
+ * @returns Promise resolving to the GuildMember or throws on error
+ */
+export async function addRoleToUser(guildId: string, userId: string, roleId: string) {
+  const guild = await Client.guilds.fetch(guildId);
+  if (!guild) throw new Error(`Guild not found: ${guildId}`);
+  let member;
+  try {
+    member = await guild.members.fetch(userId);
+  } catch {
+    throw new Error('User is not a member of the guild');
+  }
+  if (!member || typeof member.roles?.add !== 'function') {
+    throw new Error('User is not a member of the guild or member object is invalid');
+  }
+  await member.roles.add(roleId);
+  return member;
+}
+
+export { Client } from './client.js';
