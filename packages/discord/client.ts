@@ -1,4 +1,4 @@
-import { Client as DiscordClient, GatewayIntentBits, ChannelType, User, GuildMember, Role, Guild, Collection, APIEmbed } from 'discord.js';
+import { Client as DiscordClient, GatewayIntentBits, ChannelType, User, GuildMember, Role, Guild, Collection } from 'discord.js';
 import type { IntentGroup } from './types.js';
 import { Intents } from './types.js';
 
@@ -235,7 +235,7 @@ export async function pullChannel(
 
     channelData.messages.push(...batch);
     messageCount += messagesArray.length;
-    lastMessageId = messagesArray[messagesArray.length - 1].id;
+    lastMessageId = messagesArray[messagesArray.length - 1]?.id;
 
     // Update progress every 5 batches
     batchCount++;
