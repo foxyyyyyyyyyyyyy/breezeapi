@@ -4,6 +4,8 @@ import { Intents } from './types.js';
 
 let client: DiscordClient | null = null;
 let ready = false;
+let restarting = false;
+const RESTART_DELAY_MS = 5000;
 
 // Helper: Create a proxy that automatically fetches when cache is accessed
 function createAutoFetchProxy<T extends { fetch: () => Promise<any> }>(target: T): T {
@@ -107,19 +109,58 @@ function resolveIntents(intents: (number | IntentGroup)[]): number[] {
   return Array.from(new Set(bits));
 }
 
+async function startDiscordClient(config: { token: string, intents: any[], publicKey?: string }) {
+  if (client) {
+    try { await client.destroy(); } catch {}
+    client = null;
+    ready = false;
+  }
+  client = new DiscordClient({ intents: resolveIntents(config.intents) });
+  if (config.publicKey) (client as any).publicKey = config.publicKey;
+  client.once('ready', () => {
+    ready = true;
+    if (client && client.user) {
+      console.log(`[Breeze Discord] Bot started as @${client.user.tag} (ID: ${client.user.id})`);
+    } else {
+      console.log('[Breeze Discord] Bot started (no user info)');
+    }
+  });
+  // Listen for fatal errors and disconnects
+  client.on('error', (err) => {
+    console.error('[Breeze Discord] Client error:', err);
+    scheduleRestart(config);
+  });
+  client.on('shardDisconnect', (event, shardId) => {
+    console.error(`[Breeze Discord] Shard ${shardId} disconnected:`, event);
+    scheduleRestart(config);
+  });
+  client.on('invalidated', () => {
+    console.error('[Breeze Discord] Client invalidated. Restarting...');
+    scheduleRestart(config);
+  });
+  try {
+    await client.login(config.token);
+  } catch (err) {
+    console.error('[Breeze Discord] Login failed:', err);
+    scheduleRestart(config);
+  }
+  return client;
+}
+
+function scheduleRestart(config: { token: string, intents: any[], publicKey?: string }) {
+  if (restarting) return;
+  restarting = true;
+  setTimeout(() => {
+    restarting = false;
+    console.log('[Breeze Discord] Attempting to restart bot...');
+    startDiscordClient(config);
+  }, RESTART_DELAY_MS);
+}
+
 export function getClient(config: { token: string, intents: any[], publicKey?: string }) {
   if (!client) {
-    client = new DiscordClient({ intents: resolveIntents(config.intents) });
-    if (config.publicKey) (client as any).publicKey = config.publicKey;
-    client.once('ready', () => {
-      ready = true;
-      if (client && client.user) {
-        console.log(`[Breeze Discord] Bot started as @${client.user.tag} (ID: ${client.user.id})`);
-      } else {
-        console.log('[Breeze Discord] Bot started (no user info)');
-      }
-    });
-    client.login(config.token);
+    // Start with restart logic
+    startDiscordClient(config);
   }
   return client;
 }

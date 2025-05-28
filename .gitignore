@@ -9,3 +9,17 @@ examples/**/bun.lockb
 examples/**/bunfig.toml
 
 
+**/node_modules
+**/out
+**/dist
+**/build
+**/coverage
+**/bun.lockb
+**/bunfig.toml
+**/**/node_modules
+**/**/out
+**/**/dist
+**/**/build
+**/**/coverage
+**/**/bun.lockb
+**/**/bunfig.toml

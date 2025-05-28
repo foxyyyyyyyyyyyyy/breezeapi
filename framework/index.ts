@@ -140,4 +140,26 @@ export async function createApp(options = {}) {
     _registerPluginRoute,
   };
   return app;
+}
+
+/**
+ * Registers a GET and POST handler for a given path, forwarding requests to a fetch-compatible handler.
+ * Usage: registerFetchHandler(router, '/api/auth/*', handler)
+ *
+ * @param router - The Router instance
+ * @param path - The wildcard route path (e.g. '/api/auth/*')
+ * @param handler - A function that takes a Fetch API Request and returns a Response
+ */
+export function registerFetchHandler(router: Router, path: string, handler: (req: Request) => Promise<Response> | Response) {
+  if (typeof router.get === 'function') {
+    router.get(path, async (req: Request) => {
+      return await handler(req);
+    });
+  }
+  if (typeof router.post === 'function') {
+    router.post(path, async (req: Request) => {
+      return await handler(req);
+    });
+  }
 } 
+

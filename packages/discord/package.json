@@ -5,7 +5,7 @@
   "main": "index.ts",
   "scripts": {
     "dev": "bun run index.ts",
-    "build": "bun build index.ts"
+    "build": "bun build index.ts --outdir ./out --target bun"
   },
   "peerDependencies": {
     "@breezeapi/core": "^1.5.5",

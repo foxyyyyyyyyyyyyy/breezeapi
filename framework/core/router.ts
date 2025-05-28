@@ -37,6 +37,7 @@ export class Router {
   private routesLoaded = false;
   private debug: boolean;
   private customGetRoutes: { path: string, handler: Function }[] = [];
+  private customPostRoutes: { path: string, handler: Function }[] = [];
   public config: any; // Store the config object
 
   constructor(private apiDir: string, private tcpDir: string, options: { debug?: boolean } = {}) {
@@ -49,6 +50,14 @@ export class Router {
    */
   get(path: string, handler: Function) {
     this.customGetRoutes.push({ path, handler });
+  }
+
+  /**
+   * Register a custom POST route (for plugins, docs, etc)
+   */
+  post(path: string, handler: Function) {
+    if (!this.customPostRoutes) this.customPostRoutes = [];
+    this.customPostRoutes.push({ path, handler });
   }
 
   public async loadRoutes() {
@@ -116,6 +125,11 @@ export class Router {
     // Check custom GET routes first
     if (req.method === 'GET') {
       const custom = this.customGetRoutes.find(r => r.path === url.pathname);
+      if (custom) return await custom.handler({ req });
+    }
+    // Check custom POST routes
+    if (req.method === 'POST' && this.customPostRoutes) {
+      const custom = this.customPostRoutes.find(r => r.path === url.pathname);
       if (custom) return await custom.handler({ req });
     }
     const method = req.method;
