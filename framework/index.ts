@@ -38,6 +38,17 @@ export type PluginContext<Ctx = any> = {
   ctxType?: Ctx;
 };
 
+/**
+ * Context type for manual .all()/.get()/.post() handlers
+ */
+export type ManualRouteContext = {
+  request: Request;
+  req: Request;
+  url: URL;
+  method: string;
+  error: (status?: number, message?: string) => Response;
+};
+
 async function loadUserConfig() {
   const root = process.cwd();
   const configPath = resolve(root, '.breeze/config.ts');
@@ -138,6 +149,13 @@ export async function createApp(options = {}) {
     },
     // Expose for plugins
     _registerPluginRoute,
+    /**
+     * Register a prioritized manual route (any method, wildcard supported).
+     * Handler receives { request, ... } context for compatibility.
+     */
+    all: (path: string, handler: Function) => {
+      router.all(path, handler);
+    },
   };
   return app;
 }

@@ -26,6 +26,15 @@ function stripRoutesPrefix(routePath: string, type: 'http' | 'ws' | 'tcp' | 'trp
   return routePath;
 }
 
+// Simple wildcard matcher: /api/auth/* matches /api/auth/foo/bar
+function matchWildcard(pattern: string, path: string): boolean {
+  if (pattern.endsWith('/*')) {
+    const base = pattern.slice(0, -2);
+    return path === base || path.startsWith(base + '/');
+  }
+  return pattern === path;
+}
+
 // Router class for Breeze Framework
 // Accepts and stores the full config object (including custom fields like name)
 
@@ -38,6 +47,7 @@ export class Router {
   private debug: boolean;
   private customGetRoutes: { path: string, handler: Function }[] = [];
   private customPostRoutes: { path: string, handler: Function }[] = [];
+  private customAllRoutes: { path: string, handler: Function }[] = [];
   public config: any; // Store the config object
 
   constructor(private apiDir: string, private tcpDir: string, options: { debug?: boolean } = {}) {
@@ -50,6 +60,9 @@ export class Router {
    */
   get(path: string, handler: Function) {
     this.customGetRoutes.push({ path, handler });
+    if (this.debug) {
+      console.log(`[Breeze] Registered manual route: GET ${path}`);
+    }
   }
 
   /**
@@ -58,6 +71,19 @@ export class Router {
   post(path: string, handler: Function) {
     if (!this.customPostRoutes) this.customPostRoutes = [];
     this.customPostRoutes.push({ path, handler });
+    if (this.debug) {
+      console.log(`[Breeze] Registered manual route: POST ${path}`);
+    }
+  }
+
+  /**
+   * Register a custom ALL route (any method, with wildcard support)
+   */
+  all(path: string, handler: Function) {
+    this.customAllRoutes.push({ path, handler });
+    if (this.debug) {
+      console.log(`[Breeze] Registered manual route: ALL ${path}`);
+    }
   }
 
   public async loadRoutes() {
@@ -119,6 +145,33 @@ export class Router {
       if (!(globalThis as any)._breezeCorsWarned) {
         console.warn('[Breeze] No CORS config found in .breeze/config.ts. CORS headers will not be set.');
         (globalThis as any)._breezeCorsWarned = true;
+      }
+    }
+
+    // --- Custom ALL routes with wildcard support (priority) ---
+    for (const { path, handler } of this.customAllRoutes) {
+      if (matchWildcard(path, url.pathname)) {
+        // Provide a context compatible with both Breeze and plain Fetch
+        const context = {
+          request: req,
+          req,
+          url,
+          method: req.method,
+          error: (status = 500, message = 'Error') => new Response(message, { status }),
+        };
+        // Try to detect handler arity for compatibility
+        if (handler.length === 1) {
+          // Could be (context) or (request)
+          try {
+            return await handler(context);
+          } catch (e) {
+            // fallback: try as (request)
+            return await handler(req);
+          }
+        } else {
+          // fallback: just call with context
+          return await handler(context);
+        }
       }
     }
 
