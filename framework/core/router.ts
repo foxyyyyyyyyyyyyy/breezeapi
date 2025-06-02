@@ -113,6 +113,30 @@ export class Router {
     }
   }
 
+  private async patchCorsHeaders(req: Request, res: Response): Promise<Response> {
+    if (!this.config?.cors) return res;
+    const corsHandler = cors(this.config.cors);
+    const tempCtx: any = {
+      headers: req.headers,
+      method: req.method,
+      set: (k: string, v: string) => {
+        if (!tempCtx._responseHeaders) tempCtx._responseHeaders = new Headers();
+        tempCtx._responseHeaders.set(k, v);
+      },
+      _responseHeaders: new Headers(),
+    };
+    await corsHandler(tempCtx, async () => undefined);
+    const newHeaders = new Headers(res.headers);
+    for (const [k, v] of tempCtx._responseHeaders) {
+      newHeaders.set(k, v);
+    }
+    return new Response(res.body, {
+      status: res.status,
+      statusText: res.statusText,
+      headers: newHeaders,
+    });
+  }
+
   async handleHttp(req: Request): Promise<Response> {
     await this.loadRoutes();
     const url = new URL(req.url);
@@ -137,7 +161,7 @@ export class Router {
       const maybeResponse = await corsHandler(ctx, async () => undefined);
       if (maybeResponse) {
         // If CORS handler returns a response (e.g. for OPTIONS), return it immediately
-        return maybeResponse;
+        return await this.patchCorsHeaders(req, maybeResponse);
       }
       // Otherwise, pass the headers to the real context below
     } else {
@@ -159,38 +183,45 @@ export class Router {
           method: req.method,
           error: (status = 500, message = 'Error') => new Response(message, { status }),
         };
-        // Try to detect handler arity for compatibility
-        if (handler.length === 1) {
-          // Could be (context) or (request)
-          try {
-            return await handler(context);
-          } catch (e) {
-            // fallback: try as (request)
-            return await handler(req);
+        let response;
+        try {
+          if (handler.length === 1) {
+            // Could be (context) or (request)
+            try {
+              response = await handler(context);
+            } catch (e) {
+              response = await handler(req);
+            }
+          } else {
+            response = await handler(context);
           }
-        } else {
-          // fallback: just call with context
-          return await handler(context);
+        } catch (e) {
+          response = new Response('Internal Server Error', { status: 500 });
         }
+        // Always patch CORS headers if config is present and response is a Response
+        if (response instanceof Response) {
+          return await this.patchCorsHeaders(req, response);
+        }
+        return response;
       }
     }
 
     // Check custom GET routes first
     if (req.method === 'GET') {
       const custom = this.customGetRoutes.find(r => r.path === url.pathname);
-      if (custom) return await custom.handler({ req });
+      if (custom) return await this.patchCorsHeaders(req, await custom.handler({ req }));
     }
     // Check custom POST routes
     if (req.method === 'POST' && this.customPostRoutes) {
       const custom = this.customPostRoutes.find(r => r.path === url.pathname);
-      if (custom) return await custom.handler({ req });
+      if (custom) return await this.patchCorsHeaders(req, await custom.handler({ req }));
     }
     const method = req.method;
     const route = matchRoute(this.httpRoutes, url.pathname, method, 'http');
-    if (!route) return new Response('Not Found', { status: 404 });
+    if (!route) return await this.patchCorsHeaders(req, new Response('Not Found', { status: 404 }));
     const mod = await import(route.file + '?t=' + Date.now());
     const handler = mod[method] || (mod[method && method.toUpperCase()]);
-    if (!handler) return new Response('Method Not Allowed', { status: 405 });
+    if (!handler) return await this.patchCorsHeaders(req, new Response('Method Not Allowed', { status: 405 }));
     let params = extractParams(route.routePath, url.pathname);
     let querys = Object.fromEntries(url.searchParams.entries());
     // --- config-based validation ---
@@ -199,14 +230,14 @@ export class Router {
         try {
           params = mod.config.params.parse(params);
         } catch (e: any) {
-          return new Response('Invalid params: ' + e.message, { status: 400 });
+          return await this.patchCorsHeaders(req, new Response('Invalid params: ' + e.message, { status: 400 }));
         }
       }
       if (mod.config.querys) {
         try {
           querys = mod.config.querys.parse(querys);
         } catch (e: any) {
-          return new Response('Invalid query: ' + e.message, { status: 400 });
+          return await this.patchCorsHeaders(req, new Response('Invalid query: ' + e.message, { status: 400 }));
         }
       }
     }
@@ -245,7 +276,7 @@ export class Router {
         try { json = JSON.parse(text); } catch { json = undefined; }
         if (json) mod.config.response.parse(json);
       } catch (e: any) {
-        return new Response('Invalid response: ' + e.message, { status: 500 });
+        return await this.patchCorsHeaders(req, new Response('Invalid response: ' + e.message, { status: 500 }));
       }
     }
     
@@ -262,7 +293,7 @@ export class Router {
         headers: newHeaders,
       });
     }
-    return response;
+    return await this.patchCorsHeaders(req, response);
   }
 
   async handleWebSocket(upgradeReq: Request, ws: any): Promise<void> {
