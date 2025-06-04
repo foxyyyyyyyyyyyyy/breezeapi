@@ -1,4 +1,4 @@
-import { Client as DiscordClient, GatewayIntentBits, Interaction, CommandInteraction, Message, IntentsBitField, PermissionsBitField, Events, ClientEvents } from 'discord.js';
+import { Client as DiscordClient, GatewayIntentBits, type Interaction, type CommandInteraction, type Message, IntentsBitField, PermissionsBitField, Events, type ClientEvents } from 'discord.js';
 
 /**
  * Intent groups for easy configuration. Use these in your .breeze/plugins/discord.config.ts.

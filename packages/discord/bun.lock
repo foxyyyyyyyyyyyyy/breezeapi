@@ -2,19 +2,18 @@
   "lockfileVersion": 1,
   "workspaces": {
     "": {
-      "dependencies": {
-        "@breezeapi/core": "^1.5.5",
-        "@types/node": "^22.15.18",
-        "discord.js": "^14.19.3",
-      },
       "devDependencies": {
+        "@breezeapi/core": "latest",
         "@types/node": "^22.15.18",
         "typescript": "^5.0.0",
+      },
+      "peerDependencies": {
+        "discord.js": "^14.19.3",
       },
     },
   },
   "packages": {
-    "@breezeapi/core": ["@breezeapi/core@1.5.5", "", { "dependencies": { "@trpc/server": "^10.0.0", "prompts": "^2.4.2", "zod": "^3.22.2" }, "bin": { "breeze": "cli.ts" } }, "sha512-5ALhMPsIfA+gdBecWoJyDxPAW7lFMYtfrTrdK4CKA5aBmXEI4stMgvtDYwmMKaBlEI6yrHjnlYhTUhAG4KGrvQ=="],
+    "@breezeapi/core": ["@breezeapi/core@1.5.10", "", { "dependencies": { "@trpc/server": "^10.0.0", "prompts": "^2.4.2", "zod": "^3.22.2" }, "bin": { "breeze": "cli.ts" } }, "sha512-q5ebJdp6Lv3/UkFS3DHr+ztn589O1w9hrsK3TQqMgv5ZgqRgCvJmlrGszeAxxT0aRTfTJYRa9YpFC499V6cj+w=="],
 
     "@discordjs/builders": ["@discordjs/builders@1.11.2", "", { "dependencies": { "@discordjs/formatters": "^0.6.1", "@discordjs/util": "^1.1.1", "@sapphire/shapeshift": "^4.0.0", "discord-api-types": "^0.38.1", "fast-deep-equal": "^3.1.3", "ts-mixer": "^6.0.4", "tslib": "^2.6.3" } }, "sha512-F1WTABdd8/R9D1icJzajC4IuLyyS8f3rTOz66JsSI3pKvpCAtsMBweu8cyNYsIyvcrKAVn9EPK+Psoymq+XC0A=="],
 

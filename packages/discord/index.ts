@@ -1,4 +1,4 @@
-import type{ PluginContext } from '@breezeapi/core';
+import type { PluginContext } from '@breezeapi/core';
 import { loadDiscordConfig, loadCommands, loadEvents, loadContextMenus } from './loader.js';
 import { getClient, sendToChannel, Client } from './client.js';
 import { REST, Routes } from 'discord.js';
@@ -124,100 +124,107 @@ export async function discordPlugin(ctx: PluginContext) {
     for (const evt of events) {
       console.log(`  ${evt.name} (${evt.file})`);
     }
-    
+
     // Attach event handlers to client with proper error handling
-    for (const evt of events) {
-      client.on(evt.name, async (...args) => {
+    if (client) {
+      for (const evt of events) {
+        client.on(evt.name, async (...args) => {
+          try {
+            await evt.handler(...args);
+          } catch (error) {
+            console.error(`[Breeze Discord] Error in event handler ${evt.name}:`, error);
+          }
+        });
+      }
+    } else {
+      console.error('[Breeze Discord] Client is not initialized.');
+    }
+
+    // Load context menus
+    const contextMenus = await loadContextMenus();
+    if (contextMenus.length) {
+      console.log(`[Breeze Discord] Registered context menus:`);
+      for (const ctxm of contextMenus) {
+        const type = ctxm.type ? `[${ctxm.type}]` : '';
+        console.log(`  ${ctxm.name} ${type} (${ctxm.file})`);
+      }
+    } else {
+      console.log('[Breeze Discord] No context menus registered.');
+    }
+    // Build command map
+    const commandMap = new Map<string, any>();
+    for (const cmd of commands) {
+      commandMap.set(cmd.name, cmd.handler);
+    }
+
+    // Attach interactionCreate event
+    if (client) {
+      client.on('interactionCreate', async (interaction) => {
+        if (!interaction.isChatInputCommand()) return;
+        const handler = commandMap.get(interaction.commandName);
+        if (!handler) return;
+        // Build options object from interaction.options
+        const optionsObj: Record<string, any> = {};
+        if (interaction.options && Array.isArray(handler.commandOptions?.options)) {
+          for (const opt of handler.commandOptions.options) {
+            const val = interaction.options.get(opt.name)?.value;
+            if (val !== undefined) optionsObj[opt.name] = val;
+          }
+        }
+        // Build context
+        const ctx = {
+          client,
+          interaction,
+          options: optionsObj,
+          reply: (data: any) => interaction.reply(data),
+          defer: () => interaction.deferReply(),
+          followUp: (data: any) => interaction.followUp(data),
+        };
         try {
-          await evt.handler(...args);
-        } catch (error) {
-          console.error(`[Breeze Discord] Error in event handler ${evt.name}:`, error);
+          // Permission check (if defined)
+          const perms = handler.commandOptions?.permissions;
+          if (perms) {
+            const member = interaction.member as any;
+            const required = Array.isArray(perms) ? perms : [perms];
+            // Only check if member.permissions is a PermissionsBitField
+            const hasPerms = member?.permissions && typeof member.permissions.has === 'function';
+            const missing = hasPerms
+              ? required.filter((perm: string) => !member.permissions.has(Permissions[perm as keyof typeof Permissions]))
+              : required;
+            if (missing.length > 0) {
+              await interaction.reply({ content: `You lack the required permissions: ${missing.join(', ')}`, ephemeral: true });
+              return;
+            }
+          }
+          // Run checks, before, after hooks if needed
+          if (handler.commandOptions?.checks) {
+            for (const check of handler.commandOptions.checks) {
+              if (!(await check(ctx))) return;
+            }
+          }
+          if (handler.commandOptions?.before) {
+            await handler.commandOptions.before(ctx);
+          }
+          const result = await handler(ctx);
+          if (result !== undefined && !interaction.replied && !interaction.deferred) {
+            await ctx.reply(result);
+          }
+          if (handler.commandOptions?.after) {
+            await handler.commandOptions.after(ctx, result);
+          }
+        } catch (err) {
+          console.error('[Breeze Discord] Command error:', err);
+          if (!interaction.replied && !interaction.deferred) {
+            await interaction.reply({ content: 'An error occurred.', ephemeral: true });
+          }
         }
       });
+      // TODO: Wire up HTTP endpoint
+      (ctx as any).discord = client;
+    } else {
+      console.error('[Breeze Discord] Client is not initialized.');
     }
-  } else {
-    console.log('[Breeze Discord] No events registered.');
   }
-  // Load context menus
-  const contextMenus = await loadContextMenus();
-  if (contextMenus.length) {
-    console.log(`[Breeze Discord] Registered context menus:`);
-    for (const ctxm of contextMenus) {
-      const type = ctxm.type ? `[${ctxm.type}]` : '';
-      console.log(`  ${ctxm.name} ${type} (${ctxm.file})`);
-    }
-  } else {
-    console.log('[Breeze Discord] No context menus registered.');
-  }
-  // Build command map
-  const commandMap = new Map<string, any>();
-  for (const cmd of commands) {
-    commandMap.set(cmd.name, cmd.handler);
-  }
-
-  // Attach interactionCreate event
-  client.on('interactionCreate', async (interaction) => {
-    if (!interaction.isChatInputCommand()) return;
-    const handler = commandMap.get(interaction.commandName);
-    if (!handler) return;
-    // Build options object from interaction.options
-    const optionsObj: Record<string, any> = {};
-    if (interaction.options && Array.isArray(handler.commandOptions?.options)) {
-      for (const opt of handler.commandOptions.options) {
-        const val = interaction.options.get(opt.name)?.value;
-        if (val !== undefined) optionsObj[opt.name] = val;
-      }
-    }
-    // Build context
-    const ctx = {
-      client,
-      interaction,
-      options: optionsObj,
-      reply: (data: any) => interaction.reply(data),
-      defer: () => interaction.deferReply(),
-      followUp: (data: any) => interaction.followUp(data),
-    };
-    try {
-      // Permission check (if defined)
-      const perms = handler.commandOptions?.permissions;
-      if (perms) {
-        const member = interaction.member as any;
-        const required = Array.isArray(perms) ? perms : [perms];
-        // Only check if member.permissions is a PermissionsBitField
-        const hasPerms = member?.permissions && typeof member.permissions.has === 'function';
-        const missing = hasPerms
-          ? required.filter((perm: string) => !member.permissions.has(Permissions[perm as keyof typeof Permissions]))
-          : required;
-        if (missing.length > 0) {
-          await interaction.reply({ content: `You lack the required permissions: ${missing.join(', ')}`, ephemeral: true });
-          return;
-        }
-      }
-      // Run checks, before, after hooks if needed
-      if (handler.commandOptions?.checks) {
-        for (const check of handler.commandOptions.checks) {
-          if (!(await check(ctx))) return;
-        }
-      }
-      if (handler.commandOptions?.before) {
-        await handler.commandOptions.before(ctx);
-      }
-      const result = await handler(ctx);
-      if (result !== undefined && !interaction.replied && !interaction.deferred) {
-        await ctx.reply(result);
-      }
-      if (handler.commandOptions?.after) {
-        await handler.commandOptions.after(ctx, result);
-      }
-    } catch (err) {
-      console.error('[Breeze Discord] Command error:', err);
-      if (!interaction.replied && !interaction.deferred) {
-        await interaction.reply({ content: 'An error occurred.', ephemeral: true });
-      }
-    }
-  });
-  // TODO: Wire up HTTP endpoint
-  (ctx as any).discord = client;
 }
 
 /**

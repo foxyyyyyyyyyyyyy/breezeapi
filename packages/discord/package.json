@@ -1,18 +1,28 @@
 {
   "name": "@breezeapi/discord",
-  "version": "0.2.4",
+  "version": "0.2.7",
   "description": "A discord plugin for breezeapi",
-  "main": "index.ts",
+  "files": [
+    "out"
+  ],
+  "main": "out/index.js",
+  "types": "out/index.d.ts",
   "scripts": {
     "dev": "bun run index.ts",
-    "build": "bun build index.ts --outdir ./out --target bun"
+    "build": "bun build index.ts --outdir ./out --target bun",
+    "types": "tsc --emitDeclarationOnly --declaration --outDir ./out",
+    "build:all": "bun run build && bun run types",
+    "release": "npm version patch && bun run build:all && npm publish"
+  },
+  "publishConfig": {
+    "directory": "out"
   },
   "peerDependencies": {
-    "@breezeapi/core": "^1.5.5",
     "discord.js": "^14.19.3"
   },
   "devDependencies": {
     "@types/node": "^22.15.18",
+    "@breezeapi/core": "latest",
     "typescript": "^5.0.0"
   },
   "engines": {
