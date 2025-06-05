@@ -180,18 +180,54 @@ Breeze supports a powerful, file-based middleware system inspired by Next.js:
 
 - **Middleware functions** are of the form:
 ```ts
-(ctx, next) => Promise<Response>
+(ctx: MiddlewareContext, next: () => Promise<Response>) => Promise<Response>
+```
+
+### Middleware Types
+
+There are three ways to define middleware:
+
+1. **Default Middleware** (runs before route handler):
+```ts
+export default async (ctx: MiddlewareContext, next: () => Promise<Response>) => {
+  // Runs before route handler
+  return next();
+};
+```
+
+2. **onRequest Middleware** (runs before route handler):
+```ts
+export const onRequest = async (ctx: MiddlewareContext, next: () => Promise<Response>) => {
+  // Runs before route handler
+  return next();
+};
+```
+
+3. **onResponse Middleware** (runs after route handler):
+```ts
+export const onResponse = async (ctx: MiddlewareContext, next: () => Promise<Response>) => {
+  // Runs after route handler
+  return next();
+};
+```
+
+The `MiddlewareContext` type provides:
+```ts
+type MiddlewareContext = {
+  request: Request;
+  response?: Response;
+};
 ```
 
 ### Global Middleware
-- Place any `.ts` or `.js` file exporting a default middleware function in a `middleware/` folder at the root of your `src` directory (e.g. `src/middleware/`).
+- Place any `.ts` or `.js` file exporting a middleware function in a `middleware/` folder at the root of your `src` directory (e.g. `src/middleware/`).
 - This is fully optional: if the folder does not exist, no global middleware will run.
 - All global middleware will run for every request, in the order of the files in that folder.
 
 **Example: `src/middleware/logger.ts`**
 ```ts
-export default async (ctx, next) => {
-  console.log('Request:', ctx.req.url);
+export const onRequest = async (ctx: MiddlewareContext, next: () => Promise<Response>) => {
+  console.log('Request:', ctx.request.url);
   return next();
 };
 ```
@@ -202,9 +238,18 @@ export default async (ctx, next) => {
 
 **Example: `routes/users/middleware.ts`**
 ```ts
-export default async (ctx, next) => {
-  if (!ctx.user) return new Response('Unauthorized', { status: 401 });
+export const onRequest = async (ctx: MiddlewareContext, next: () => Promise<Response>) => {
+  if (!ctx.request.headers.get('authorization')) {
+    return new Response('Unauthorized', { status: 401 });
+  }
   return next();
+};
+
+export const onResponse = async (ctx: MiddlewareContext, next: () => Promise<Response>) => {
+  const response = await next();
+  // Add custom header to response
+  response.headers.set('X-Custom-Header', 'value');
+  return response;
 };
 ```
 
@@ -230,8 +275,13 @@ src/routes/
 **Group middleware example:**
 ```ts
 // src/routes/(auth)/middleware.ts
-export default async (ctx, next) => {
+export const onRequest = async (ctx: MiddlewareContext, next: () => Promise<Response>) => {
   // Auth logic for all routes in (auth) group
+  return next();
+};
+
+export const onResponse = async (ctx: MiddlewareContext, next: () => Promise<Response>) => {
+  // Post-processing for all routes in (auth) group
   return next();
 };
 ```

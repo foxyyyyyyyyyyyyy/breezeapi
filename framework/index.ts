@@ -64,20 +64,10 @@ async function loadUserConfig() {
 }
 
 export async function createApp(options = {}) {
-  const userConfig = await loadUserConfig();
-  // Merge: options > userConfig > defaults
-  const config = {
-    ...userConfig,
-    ...options,
-  };
-  // Always resolve the API dir and TCP dir relative to the process cwd
-  //@ts-ignore
-  const apiDir = resolve(process.cwd(), config.apiDir || 'src/routes');
-  //@ts-ignore
-  const tcpDir = resolve(process.cwd(), config.tcpDir || apiDir);
-  const router = new Router(apiDir, tcpDir, config);
-  const port = config.port || 3000;
-  const tcpPort = config.tcpPort || 4000;
+  const config = await loadConfig(options);
+  const router = new Router(config.apiDir, config.tcpDir, { debug: config.debug });
+  const port = config.port;
+  const tcpPort = config.tcpPort;
 
   // Internal: Store plugin routes to register before user routes
   const pluginRoutes: Array<{ method: string, path: string, handler: Function }> = [];
@@ -113,20 +103,25 @@ export async function createApp(options = {}) {
           },
         },
       });
-      // TCP
-      (globalThis as any).Bun.listen({
-        hostname: '0.0.0.0',
-        port: tcpPort,
-        socket: {
-          open(socket: any) {
-            router.handleTcp(socket);
+
+      // TCP (only if enabled)
+      if (config.enableTcp) {
+        (globalThis as any).Bun.listen({
+          hostname: '0.0.0.0',
+          port: tcpPort,
+          socket: {
+            open(socket: any) {
+              router.handleTcp(socket);
+            },
+            data(socket: any, data: Uint8Array) {},
+            close(socket: any) {},
+            error(socket: any, error: Error) {},
           },
-          data(socket: any, data: Uint8Array) {},
-          close(socket: any) {},
-          error(socket: any, error: Error) {},
-        },
-      });
-      console.log(`HTTP/WebSocket on :${port}, TCP on :${tcpPort}`);
+        });
+        console.log(`HTTP/WebSocket on :${port}, TCP on :${tcpPort}`);
+      } else {
+        console.log(`HTTP/WebSocket on :${port}`);
+      }
     },
     router,
     config,
