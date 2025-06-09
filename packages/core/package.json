@@ -1,0 +1,34 @@
+{
+  "name": "@breezeapi/core",
+  "version": "1.6.5",
+  "description": "A modern TypeScript framework for Bun to build APIs.",
+  "files": [
+  "out"
+],
+"main": "out/index.js",
+"types": "out/index.d.ts",
+
+  "scripts": {
+  "dev": "bun run index.ts",
+  "build": "bun build index.ts --outdir ./out --target bun",
+  "types": "tsc --emitDeclarationOnly --declaration --outDir ./out",
+  "build:all": "bun run build && bun run types"
+},
+"publishConfig": {
+  "directory": "out"
+},
+  "dependencies": {
+    "prompts": "^2.4.2",
+    "zod": "^3.22.2",
+    "@trpc/server": "^10.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.18",
+    "bun-types": "^1.2.13",
+    "typescript": "^5.0.0",
+    "tsc-alias": "^1.8.11"
+  },
+  "engines": {
+    "bun": ">=1.2.13"
+  }
+}
