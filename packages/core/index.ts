@@ -65,7 +65,13 @@ async function loadUserConfig() {
 
 export async function createApp(options = {}) {
   const config = await loadConfig(options);
-  const router = new Router(config.apiDir, config.tcpDir, { debug: config.debug, enableTcp: config.enableTcp });
+  const router = new Router(config.apiDir, config.tcpDir, {
+    debug: config.debug,
+    enableTcp: config.enableTcp,
+    cors: config.cors,
+    cache: config.cache,
+    compression: config.compression,
+  });
   const port = config.port;
   const tcpPort = config.tcpPort;
 

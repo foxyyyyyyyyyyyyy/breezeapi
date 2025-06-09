@@ -1,0 +1,21 @@
+{
+    "name": "@breezeapi/demo",
+    "version": "1.6.5",
+    "description": "A modern TypeScript framework for Bun to build APIs.",
+    "files": [
+    "out"
+  ],
+  "main": "out/index.js",
+  "types": "out/index.d.ts",
+  
+    "scripts": {
+    "dev": "bun run server.ts",
+    "build": "bun build index.ts --outdir ./out --target bun",
+    "types": "tsc --emitDeclarationOnly --declaration --outDir ./out",
+    "build:all": "bun run build && bun run types"
+  },
+  
+    "engines": {
+      "bun": ">=1.2.13"
+    }
+  }

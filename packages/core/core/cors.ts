@@ -61,6 +61,19 @@ export function cors(options: CORSOptions = {}): any {
       });
     }
 
-    return next();
+    // Get the response from the next middleware
+    const response = await next();
+
+    // Create new response with CORS headers
+    const newHeaders = new Headers(response.headers);
+    ctx.responseHeaders.forEach((v, k) => {
+      newHeaders.set(k, v);
+    });
+
+    return new Response(response.body, {
+      status: response.status,
+      statusText: response.statusText,
+      headers: newHeaders,
+    });
   };
 } 

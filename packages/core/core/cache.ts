@@ -8,6 +8,7 @@ type CacheStore = {
   set: (key: string, value: string, ttl?: number) => Promise<void>;
   del: (key: string) => Promise<void>;
   has: (key: string) => Promise<boolean>;
+  getRouteCacheKey: (path: string, method: string) => string;
 };
 
 type RouteCacheEntry = {
@@ -146,6 +147,7 @@ export function createCacheStore(config: CacheConfig): CacheStore {
       set: async () => {},
       del: async () => {},
       has: async () => false,
+      getRouteCacheKey: () => '',
     };
   }
 

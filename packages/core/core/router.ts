@@ -4,7 +4,7 @@ import { WebSocketContext } from './context/ws';
 import { TcpSocketContext } from './context/tcp';
 import { compose, getMiddlewareForRoute } from './middleware';
 import { cors } from './cors';
-import { CORSConfig } from './config';
+import { CORSConfig, CompressionConfig } from './config';
 
 function extractParams(routePath: string, actualPath: string): Record<string, string> {
   const params: Record<string, string> = {};
@@ -45,6 +45,7 @@ interface RouterOptions {
   };	
   cors?: CORSConfig;
   enableTcp?: boolean;
+  compression?: CompressionConfig;
 }
 
 // Router class for Breeze Framework
@@ -68,11 +69,15 @@ export class Router {
 
   constructor(private apiDir: string, private tcpDir: string, options: RouterOptions = {}) {
     this.debug = options.debug || false;
-    this.config = options; // Store the full config for access in plugins, etc.
-    if (options.cache?.routeCache?.enabled) {
+    this.config = options;
+    
+    // Initialize cache store if cache is enabled
+    if (options.cache?.enabled) {
       const { createCacheStore } = require('./cache');
       this.cacheStore = createCacheStore(options.cache);
     }
+
+    // Initialize request merge cache if enabled
     if (options.requestMerge?.enabled) {
       this.requestMergeTimeout = options.requestMerge.timeout || 100;
     }
@@ -175,8 +180,42 @@ export class Router {
     await this.loadRoutes();
     const url = new URL(req.url);
 
+    // Log incoming request
+    if (this.debug) {
+      const headers: Record<string, string> = {};
+      req.headers.forEach((value, key) => {
+        headers[key] = value;
+      });
+      console.log('\n[Breeze] Incoming Request:', {
+        method: req.method,
+        url: req.url,
+        headers,
+      });
+    }
+
     // Create CORS middleware if configured
     const corsMiddleware = this.config.cors ? cors(this.config.cors) : null;
+
+    // Handle preflight requests immediately if CORS is configured
+    if (corsMiddleware && req.method === 'OPTIONS') {
+      const ctx = new HttpContext(req, {});
+      ctx.querys = Object.fromEntries(url.searchParams.entries());
+      const response = await corsMiddleware(ctx, () => Promise.resolve(new Response(null, { status: 204 })));
+      
+      // Log preflight response
+      if (this.debug) {
+        const headers: Record<string, string> = {};
+        response.headers.forEach((value, key) => {
+          headers[key] = value;
+        });
+        console.log('[Breeze] Preflight Response:', {
+          status: response.status,
+          headers,
+        });
+      }
+      
+      return response;
+    }
 
     // Check mounted apps first
     for (const [prefix, app] of Array.from(this.mountedApps.entries())) {
@@ -199,6 +238,12 @@ export class Router {
         });
 
         const response = await app.fetch(newReq);
+        // Apply CORS middleware if configured
+        if (corsMiddleware) {
+          const ctx = new HttpContext(req, {});
+          ctx.querys = Object.fromEntries(url.searchParams.entries());
+          return await corsMiddleware(ctx, () => Promise.resolve(response));
+        }
         return response;
       }
     }
@@ -218,15 +263,22 @@ export class Router {
     // Create a promise for this request
     const requestPromise = (async () => {
       // Check route cache first if enabled
-      if (this.cacheStore && this.config.cache.routeCache?.enabled) {
+      if (this.cacheStore && this.config.cache?.enabled) {
         const routeKey = this.cacheStore.getRouteCacheKey(url.pathname, req.method);
         const cachedRoute = await this.cacheStore.getRoute(routeKey);
         
         if (cachedRoute) {
+          if (this.debug) {
+            console.log(`[Breeze] Using cached route for ${url.pathname}`);
+          }
           // Use cached route handler
           const ctx = new HttpContext(req, cachedRoute.params);
           ctx.querys = Object.fromEntries(url.searchParams.entries());
           const response = await cachedRoute.handler(ctx);
+          // Apply CORS middleware if configured
+          if (corsMiddleware) {
+            return await corsMiddleware(ctx, () => Promise.resolve(response));
+          }
           return response;
         }
       }
@@ -260,7 +312,7 @@ export class Router {
           if (corsMiddleware) {
             const ctx = new HttpContext(req, {});
             ctx.querys = Object.fromEntries(url.searchParams.entries());
-            response = await corsMiddleware(ctx, () => Promise.resolve(response));
+            return await corsMiddleware(ctx, () => Promise.resolve(response));
           }
 
           return response;
@@ -342,18 +394,80 @@ export class Router {
       const srcRoot = path.resolve(this.apiDir, '..');
       const middlewareArr = await getMiddlewareForRoute(route.file, srcRoot, this.apiDir, this.config.cache);
 
-      // Add CORS middleware if configured
-      if (this.config.cors) {
-        middlewareArr.onRequest.unshift(cors(this.config.cors));
-      }
-
       // Run onRequest middleware
       const onRequestMw = compose(middlewareArr.onRequest);
       let response = await onRequestMw(ctx, () => handler.handler ? handler.handler(ctx, mod.config) : handler(ctx, mod.config));
 
+      // Log response after handler
+      if (this.debug) {
+        const headers: Record<string, string> = {};
+        response.headers.forEach((value, key) => {
+          headers[key] = value;
+        });
+        console.log('[Breeze] Response after handler:', {
+          status: response.status,
+          headers,
+          body: await response.clone().text().catch(() => '[Unable to read body]'),
+        });
+      }
+
       // Run onResponse middleware
       const onResponseMw = compose(middlewareArr.onResponse);
       response = await onResponseMw(ctx, () => Promise.resolve(response));
+
+      // Log response after onResponse middleware
+      if (this.debug) {
+        const headers: Record<string, string> = {};
+        response.headers.forEach((value, key) => {
+          headers[key] = value;
+        });
+        console.log('[Breeze] Response after onResponse middleware:', {
+          status: response.status,
+          headers,
+          body: await response.clone().text().catch(() => '[Unable to read body]'),
+        });
+      }
+
+      // Apply CORS middleware if configured
+      if (corsMiddleware) {
+        // Create a new context for CORS to ensure headers are properly set
+        const corsCtx = new HttpContext(req, params);
+        corsCtx.querys = querys;
+        response = await corsMiddleware(corsCtx, () => Promise.resolve(response));
+        
+        // Log CORS context headers
+        if (this.debug) {
+          const corsHeaders: Record<string, string> = {};
+          corsCtx.responseHeaders.forEach((value, key) => {
+            corsHeaders[key] = value;
+          });
+          console.log('[Breeze] CORS context headers:', corsHeaders);
+        }
+        
+        // Merge CORS headers with response headers
+        const newHeaders = new Headers(response.headers);
+        corsCtx.responseHeaders.forEach((v, k) => {
+          newHeaders.set(k, v);
+        });
+        response = new Response(response.body, {
+          status: response.status,
+          statusText: response.statusText,
+          headers: newHeaders,
+        });
+
+        // Log response after CORS middleware
+        if (this.debug) {
+          const headers: Record<string, string> = {};
+          response.headers.forEach((value, key) => {
+            headers[key] = value;
+          });
+          console.log('[Breeze] Response after CORS middleware:', {
+            status: response.status,
+            headers,
+            body: await response.clone().text().catch(() => '[Unable to read body]'),
+          });
+        }
+      }
 
       if (mod.config && mod.config.response) {
         try {
@@ -368,17 +482,45 @@ export class Router {
         }
       }
       
-      let hasCustomHeaders = false;
-      ctx.responseHeaders.forEach(() => { hasCustomHeaders = true; });
-      if (hasCustomHeaders) {
-        const newHeaders = new Headers(response.headers);
-        ctx.responseHeaders.forEach((v, k) => {
-          newHeaders.set(k, v);
+      // Merge any remaining context headers
+      const newHeaders = new Headers(response.headers);
+      ctx.responseHeaders.forEach((v, k) => {
+        newHeaders.set(k, v);
+      });
+
+      // Log context headers before final merge
+      if (this.debug) {
+        const contextHeaders: Record<string, string> = {};
+        ctx.responseHeaders.forEach((value, key) => {
+          contextHeaders[key] = value;
         });
-        response = new Response(response.body, {
+        const responseHeaders: Record<string, string> = {};
+        response.headers.forEach((value, key) => {
+          responseHeaders[key] = value;
+        });
+        console.log('[Breeze] Headers before final merge:', {
+          contextHeaders,
+          responseHeaders,
+        });
+      }
+
+      // Create final response with all headers
+      response = new Response(response.body, {
+        status: response.status,
+        statusText: response.statusText,
+        headers: newHeaders,
+      });
+
+      // Log final response
+      if (this.debug) {
+        const headers: Record<string, string> = {};
+        response.headers.forEach((value, key) => {
+          headers[key] = value;
+        });
+        console.log('[Breeze] Final response:', {
           status: response.status,
-          statusText: response.statusText,
-          headers: newHeaders,
+          headers,
+          body: await response.clone().text().catch(() => '[Unable to read body]'),
         });
       }
 
